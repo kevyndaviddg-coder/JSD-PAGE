@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent / IDE artifacts
+/.claude
+/.playwright-mcp
+
+# audit artifacts internos (no se publican)
+/audit-screenshots
