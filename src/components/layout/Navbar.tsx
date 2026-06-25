@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -21,8 +21,19 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const pathname = usePathname();
   const reduce = useReducedMotion();
+
+  // Refs para que el listener de scroll lea el estado actual sin reattachar.
+  const dropdownOpenRef = useRef(dropdownOpen);
+  const mobileOpenRef = useRef(open);
+  useEffect(() => {
+    dropdownOpenRef.current = dropdownOpen;
+  }, [dropdownOpen]);
+  useEffect(() => {
+    mobileOpenRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -36,13 +47,77 @@ export function Navbar() {
     setDropdownOpen(false);
   }, [pathname]);
 
+  /**
+   * Hide-on-anchor scroll behavior.
+   *
+   *  - Navbar permanece visible hasta llegar al ancla `data-navbar-hide-anchor`
+   *    (el h3 "Obra real, ejecutada por JSD").
+   *  - Tras cruzar el ancla:
+   *      · Scrolling down → oculta (translate up).
+   *      · Scrolling up → reaparece.
+   *  - Mientras el dropdown de Servicios o el menú mobile estén abiertos,
+   *    nunca se oculta.
+   *  - En páginas sin ancla (subpáginas), siempre visible (early return).
+   */
+  useEffect(() => {
+    const anchor = document.querySelector<HTMLElement>(
+      "[data-navbar-hide-anchor]",
+    );
+    if (!anchor) return;
+
+    let lastY = window.scrollY;
+    let hide = false;
+    const THRESHOLD = 4;
+    const NAVBAR_HEIGHT = 80;
+
+    // pastAnchor se calcula con getBoundingClientRect en CADA evento de scroll.
+    // Esto es necesario porque imágenes 8K + video sticky cambian la altura
+    // del documento DESPUÉS del mount inicial — cachear anchorTop daría
+    // valores stale y el navbar se ocultaría antes de tiempo.
+    const onScroll = () => {
+      const y = window.scrollY;
+      const rect = anchor.getBoundingClientRect();
+      const pastAnchor = rect.top < NAVBAR_HEIGHT;
+
+      const goingDown = y - lastY > THRESHOLD;
+      const goingUp = lastY - y > THRESHOLD;
+
+      if (dropdownOpenRef.current || mobileOpenRef.current) {
+        if (hide) {
+          hide = false;
+          setHidden(false);
+        }
+      } else if (goingDown && pastAnchor) {
+        if (!hide) {
+          hide = true;
+          setHidden(true);
+        }
+      } else if (goingUp || !pastAnchor) {
+        if (hide) {
+          hide = false;
+          setHidden(false);
+        }
+      }
+
+      if (goingDown || goingUp) lastY = y;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
   // Top: muy translúcido (deja respirar el hero/video). Al scrollear: glass marino sólido.
   const surface = scrolled ? "glass-navy-strong" : "glass-navy-top";
 
   return (
-    <header
+    <motion.header
+      initial={false}
+      animate={{ y: reduce ? 0 : hidden ? -100 : 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        "fixed top-0 inset-x-0 z-50 text-white transition-all duration-500",
+        "fixed top-0 inset-x-0 z-50 text-white transition-[background-color,backdrop-filter,box-shadow] duration-500",
         surface,
       )}
     >
@@ -239,6 +314,6 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-    </header>
+    </motion.header>
   );
 }

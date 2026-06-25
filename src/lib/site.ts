@@ -153,6 +153,7 @@ export type FamilyService = {
 
 export type ServiceFamily = {
   chip: string;
+  shortLabel: string;
   title: string;
   body: string;
   icon: FamilyIconKey;
@@ -162,6 +163,7 @@ export type ServiceFamily = {
 export const serviceFamilies: ServiceFamily[] = [
   {
     chip: "HVAC y climatización",
+    shortLabel: "HVAC",
     icon: "wind",
     title: "Diseño, instalación y mantenimiento de sistemas térmicos",
     body: "Equipos y sistemas HVAC para naves industriales, oficinas, retail y espacios técnicos. Diseño térmico, instalación y operación posterior.",
@@ -194,6 +196,7 @@ export const serviceFamilies: ServiceFamily[] = [
   },
   {
     chip: "Ductería, ventilación y agua helada",
+    shortLabel: "Ductería",
     icon: "layers",
     title: "Ductería metálica propia y líneas de agua helada",
     body: "Fabricación e instalación de ductería rectangular, circular y espiral, tuberías de agua helada y sistemas de ventilación industrial.",
@@ -226,6 +229,7 @@ export const serviceFamilies: ServiceFamily[] = [
   },
   {
     chip: "Fabricación a la medida",
+    shortLabel: "Fabricación",
     icon: "zap",
     title: "Corte CNC láser y plasma + piezas bajo plano",
     body: "Capacidades de fabricación que complementan los proyectos HVAC y permiten producir estructuras, bases, soportes y piezas no estandarizadas.",
@@ -289,7 +293,6 @@ export const nav: readonly NavItem[] = [
   { href: "/nosotros", label: "Nosotros" },
   { href: "/servicios", label: "Servicios", hasDropdown: true },
   { href: "/proyectos", label: "Proyectos" },
-  { href: "/blog", label: "Blog" },
   { href: "/tienda", label: "Tienda" },
   { href: "/contacto", label: "Contacto" },
 ] as const;

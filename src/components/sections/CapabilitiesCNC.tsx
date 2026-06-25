@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Container } from "@/components/ui/Container";
-import { Kicker } from "@/components/ui/Kicker";
+import { PremiumEyebrow } from "@/components/ui/PremiumEyebrow";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/motion/Reveal";
 import {
@@ -53,13 +53,13 @@ export function CapabilitiesCNC() {
   useViewportVideo(altVideo);
 
   return (
-    <section className="section-pad surface-dark relative overflow-hidden">
+    <section className="section-pad relative overflow-hidden bg-gradient-to-b from-[color:var(--color-bone)] to-[color:var(--color-ash-200)]">
       <div
         aria-hidden
         className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)",
+            "linear-gradient(rgba(15,42,71,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(15,42,71,.6) 1px, transparent 1px)",
           backgroundSize: "44px 44px",
         }}
       />
@@ -72,7 +72,7 @@ export function CapabilitiesCNC() {
           <Reveal>
             <div className="space-y-4">
               {/* Video láser principal */}
-              <div className="relative overflow-hidden rounded-[var(--radius-xl)] border border-white/10 shadow-[var(--shadow-glow)]">
+              <div className="relative overflow-hidden rounded-[var(--radius-xl)] border border-[color:var(--color-ink)]/10 shadow-[var(--shadow-glow)]">
                 <video
                   ref={mainVideo}
                   src="/media/jsd/video/cnc-laser.mp4"
@@ -98,7 +98,7 @@ export function CapabilitiesCNC() {
                 <motion.div
                   whileHover={reduce ? undefined : { y: -2 }}
                   transition={{ duration: 0.3 }}
-                  className="relative overflow-hidden rounded-[var(--radius-lg)] border border-white/10"
+                  className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-ink)]/10"
                 >
                   <video
                     ref={altVideo}
@@ -117,7 +117,7 @@ export function CapabilitiesCNC() {
                 <motion.div
                   whileHover={reduce ? undefined : { y: -2 }}
                   transition={{ duration: 0.3 }}
-                  className="relative overflow-hidden rounded-[var(--radius-lg)] border border-white/10"
+                  className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-ink)]/10"
                 >
                   <div
                     className="aspect-[4/3] w-full bg-cover bg-center"
@@ -135,12 +135,12 @@ export function CapabilitiesCNC() {
           </Reveal>
 
           <Reveal delay={0.1}>
-            <Kicker tone="bone">Fabricación · CNC láser · proyectos a medida</Kicker>
-            <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl lg:text-[48px]">
+            <PremiumEyebrow tone="light">Fabricación CNC · Proyectos a medida</PremiumEyebrow>
+            <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-semibold leading-tight tracking-tight text-[color:var(--color-ink)] sm:text-4xl lg:text-[48px]">
               Fabricación metálica, corte láser y{" "}
-              <span className="text-[color:var(--color-amber)]">proyectos a la medida</span>.
+              <span className="text-[color:var(--color-amber-700)]">proyectos a la medida</span>.
             </h2>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/80">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-[color:var(--color-steel)]">
               Además de HVAC y climatización, JSD fabrica ductería propia,
               estructuras, soportes y piezas especiales bajo plano. Redilas,
               trailas y proyectos especiales se suman al alcance
@@ -160,12 +160,12 @@ export function CapabilitiesCNC() {
                     ease: [0.16, 1, 0.3, 1],
                   }}
                   whileHover={reduce ? undefined : { x: 4 }}
-                  className="flex items-start gap-3 rounded-[var(--radius-md)] glass-card p-4"
+                  className="flex items-start gap-3 rounded-[var(--radius-md)] glass-card-light p-4"
                 >
                   <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--color-amber)]/15 text-[color:var(--color-amber)]">
                     <Icon className="size-4" />
                   </span>
-                  <span className="text-sm text-white/90 leading-snug">{label}</span>
+                  <span className="text-sm text-[color:var(--color-ink)]/90 leading-snug">{label}</span>
                 </motion.li>
               ))}
             </ul>
@@ -175,7 +175,7 @@ export function CapabilitiesCNC() {
                 Conocer fabricación CNC
                 <ArrowRightIcon className="size-4" />
               </Button>
-              <Button href="/servicios/redilas-trailas" variant="outlineLight" size="md">
+              <Button href="/servicios/redilas-trailas" variant="outline" size="md">
                 Redilas y trailas
               </Button>
             </div>

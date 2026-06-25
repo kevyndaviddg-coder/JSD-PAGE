@@ -1,84 +1,93 @@
 "use client";
 
 /**
- * ServicesGrid v4 — "Light Premium Industrial" (blueprint editorial).
+ * ServicesGrid v9 — Expanding editorial gallery + Tienda estable.
  *
- * Punto de partida:
- *  v2 era light pero plana / catálogo SaaS.
- *  v3 era dark cinematográfica pero rompía con el resto de secciones light
- *  (Process timeline + Capabilities CNC ya son dark, demasiado dark seguido).
- *  v4 combina:
- *   – Surface clara (paper) con grid técnico tipo blueprint navy 4.5%.
- *   – Ambient orbs tenues (ámbar + navy al 8% blur 140px) para profundidad.
- *   – Dark cards (navy + foto) flotando sobre la superficie clara → contraste
- *     fuerte sin que la sección se sienta pesada.
- *   – Índice mono ámbar grande por familia + hairline ámbar animada.
- *   – Tienda ribbon con cards light tenue (sin imagen) — contrasta con las
- *     cards oscuras de servicios y se lee como "secundaria".
+ * ESTRUCTURA:
+ *  - CapacidadesBlock:
+ *      Galería editorial expansible con 3 familias en horizontal:
+ *      panel activo = collage editorial (imagen principal + 2 thumbs +
+ *      título + descripción breve + tags + 1 CTA); paneles colapsados =
+ *      imagen dimmed + número grande + nombre vertical.
+ *      Controles: flecha prev/next + indicador "01 / 03".
+ *      Lógica de expansión inspirada en el Image Accordion de Le Thanh
+ *      (21st.dev, similarity 6.669) pero con composición editorial propia.
  *
- * Patrones 21st.dev / premium implementados (de verdad):
- *  · "Blueprint surface" — grid técnico navy 4.5% en bg paper, evoca papel
- *    técnico industrial.
- *  · "Ambient depth orbs" — pattern Vercel/Linear traído a light (ámbar +
- *    navy al 8%, blur 140px).
- *  · "Top hairline" — separador ámbar editorial.
- *  · "Editorial mono index" — número grande mono ámbar/85 + label
- *    "Familia / 03" + hairline scaleX por familia.
- *  · "Spotlight Dark Card on Light" — las cards son las únicas piezas
- *    oscuras de la sección. Lift fuerte con shadow ámbar al active.
- *  · "Glass strip bottom" — bottom strip de la card con backdrop-blur y
- *    título + short siempre visibles.
- *  · "Inset border-glow" — sin layout shift, border ámbar/40 al active.
- *  · "Minimal product ribbon" — tienda ribbon clarísimamente subordinada
- *    en tonos light tenue (bg-bone + ash border), sin imágenes, icon-only.
- *  · "Cinematic light CTA" — chip + display copy con ámbar spans + 2
- *    buttons centered, sin caja contenedora.
+ *  - TiendaShowcase: visual IDÉNTICO al anterior, sólo refactorizada la
+ *    interacción para usar el hook estable y resolver la oscilación.
+ *
+ * BUG DE OSCILACIÓN (causa raíz identificada):
+ *  El componente anterior usaba `onMouseEnter` sobre el <button>, con
+ *  hijos absolutos (Image, overlays) que el browser puede tratar como
+ *  zonas separadas durante una animación de width de 700ms. Sin hover
+ *  intent ni guard `idx === activeIdx`, cada microcruce de boundary
+ *  disparaba un setState que reiniciaba la transición y oscilaba.
+ *
+ * FIX:
+ *  Hook `useStableActiveIndex`:
+ *   1. Hover intent timer (150ms) antes de activar (cancelable).
+ *   2. Activation lock (220ms) tras un cambio — ignora pointer events
+ *      durante la transición visual, manteniendo click/keyboard activos.
+ *   3. Guard `idx === activeRef.current` evita re-renders innecesarios.
+ *   4. Single source of truth: un solo `activeIdx`.
+ *   5. Cleanup de timers en unmount + en `cancelHover`.
+ *   6. `onPointerEnter` (no `onMouseEnter`) — pointer events unifican
+ *      mouse/touch/pen y son más estables.
+ *   7. Hit area = `<button>` absoluto z-20 sobre la capa visual.
+ *      Hijos visuales = `pointer-events: none` → ningún hijo dispara
+ *      su propio pointerenter.
+ *   8. Click/keyboard/arrow → vía `setActive` (immediate, sin hover intent).
+ *
+ * COMPONENTES 21st.dev utilizados:
+ *  - Interactive Image Accordion (Le Thanh, similarity 6.669): lógica de
+ *    expansión (un panel ancho + N estrechos), caption rotada 90° en
+ *    colapsados, gradiente activo. ADAPTADO con flex-grow en lugar de
+ *    width fija + composición editorial diferente en active.
+ *  - Sliding Tabs (similarity 0.532): mecánica del indicador "01 / 03"
+ *    y arrow controls con focus visible ring.
+ *
+ * UI/UX Pro Max:
+ *  - Hover intent (150ms) — patrón "intent-based interaction" para
+ *    accordions expansibles. Evita activaciones accidentales.
+ *  - Stable hit areas: la capa interactiva no compite con la capa visual.
+ *  - Reduced motion: lock y hover intent → 0ms, animaciones instantáneas.
+ *  - Touch: tap activa de inmediato (vía onClick). El click es prioridad
+ *    sobre hover intent.
+ *  - Mínimo 44×44 px en flechas (sm: 44, md+: 48).
+ *  - aria-selected/controls + role="tablist"/role="tab" + keyboard nav.
  *
  * Motion:
- *  · `viewport={{ once: false, amount: 0.25 }}` en cards + headers
- *    → repetible al subir y bajar.
- *  · `cardVariants` con `custom={index}` para stagger 0.07s.
- *  · `familyHeaderVariants` para entrada del bloque editorial.
- *  · Hairline ámbar `scaleX` `origin-left` 0.8s por familia.
- *  · `useInView` margin ±25% por card → spotlight ámbar + inset border.
- *  · Respeta `prefers-reduced-motion`.
- *
- * Título nuevo (vs v3 plano "Lo que JSD diseña, fabrica e instala hoy"):
- *  H2: "HVAC, ductería y fabricación industrial — bajo una sola operación
- *       técnica."
- *  Sub: "Diseñamos, fabricamos e instalamos los sistemas que mantienen tu
- *        operación industrial corriendo. Sin proveedores intermedios."
- *  · Frontload de capacidades (HVAC + ductería + fabricación).
- *  · "Una sola operación técnica" en ámbar — el verdadero diferenciador.
- *  · Sub concreto, verbo de acción, beneficio operacional para el cliente,
- *    cierre punzante de competitividad ("sin proveedores intermedios").
+ *  - flex-grow animado con CSS transition `cubic-bezier(0.16, 1, 0.3, 1)`
+ *    400ms — soportado natively por todos los browsers modernos sin
+ *    competir con motion.
+ *  - AnimatePresence para overlays, thumbs y content del panel activo.
+ *  - prefers-reduced-motion: transitions a 0, hover intent a 0.
  */
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
-import { motion, useInView, useReducedMotion } from "motion/react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Container } from "@/components/ui/Container";
-import { Kicker } from "@/components/ui/Kicker";
-import { Button } from "@/components/ui/Button";
+import { PremiumEyebrow } from "@/components/ui/PremiumEyebrow";
 import {
   ArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   LayersIcon,
-  TruckIcon,
-  WhatsAppIcon,
   WindIcon,
   ZapIcon,
 } from "@/components/ui/Icons";
 import { Reveal } from "@/components/motion/Reveal";
-import {
-  serviceFamilies,
-  tiendaProducts,
-  whatsappLink,
-  type FamilyService,
-  type ServiceFamily,
-  type TiendaProduct,
-} from "@/lib/site";
+import { serviceFamilies, type ServiceFamily } from "@/lib/site";
 import { cn } from "@/lib/utils";
+import { TiendaIndustrial } from "@/components/sections/TiendaIndustrial";
 
 const FAMILY_ICONS = {
   wind: WindIcon,
@@ -86,354 +95,569 @@ const FAMILY_ICONS = {
   zap: ZapIcon,
 } as const;
 
-/* ════════════════ Motion variants ════════════════ */
+/* ════════════════ useStableActiveIndex hook ════════════════ */
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 24, scale: 0.985 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      duration: 0.6,
-      delay: i * 0.07,
-      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
-    },
-  }),
-};
+interface UseStableActiveIndexOptions {
+  hoverDelay?: number;
+  lockDelay?: number;
+}
 
-const familyHeaderVariants = {
-  hidden: { opacity: 0, y: 18 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.55,
-      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+function useStableActiveIndex(
+  initial: number,
+  { hoverDelay = 150, lockDelay = 220 }: UseStableActiveIndexOptions = {},
+) {
+  const reduce = useReducedMotion();
+  const [activeIdx, setActiveIdxState] = useState(initial);
+
+  // Stable refs to avoid stale closures inside event handlers
+  const activeRef = useRef(activeIdx);
+  activeRef.current = activeIdx;
+
+  const lockedRef = useRef(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHoverTimer = useCallback(() => {
+    if (hoverTimerRef.current !== null) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  }, []);
+
+  const clearLockTimer = useCallback(() => {
+    if (lockTimerRef.current !== null) {
+      clearTimeout(lockTimerRef.current);
+      lockTimerRef.current = null;
+    }
+  }, []);
+
+  const applyActive = useCallback(
+    (idx: number) => {
+      if (idx === activeRef.current) return; // guard: no-op si ya es activo
+      clearHoverTimer();
+      setActiveIdxState(idx);
+      // Activation lock: bloquea hover intent durante la transición
+      lockedRef.current = true;
+      clearLockTimer();
+      lockTimerRef.current = setTimeout(() => {
+        lockedRef.current = false;
+        lockTimerRef.current = null;
+      }, lockDelay);
     },
-  },
-};
+    [clearHoverTimer, clearLockTimer, lockDelay],
+  );
+
+  const requestHover = useCallback(
+    (idx: number) => {
+      if (lockedRef.current) return; // ignora hover durante lock
+      if (idx === activeRef.current) return; // guard: ya activo
+      if (reduce) {
+        applyActive(idx);
+        return;
+      }
+      clearHoverTimer();
+      hoverTimerRef.current = setTimeout(() => {
+        hoverTimerRef.current = null;
+        applyActive(idx);
+      }, hoverDelay);
+    },
+    [reduce, applyActive, clearHoverTimer, hoverDelay],
+  );
+
+  const cancelHover = useCallback(() => {
+    clearHoverTimer();
+  }, [clearHoverTimer]);
+
+  const setActive = useCallback(
+    (idx: number) => {
+      // click/keyboard/arrow: immediate, ignora hover intent + lock
+      applyActive(idx);
+    },
+    [applyActive],
+  );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current !== null) clearTimeout(hoverTimerRef.current);
+      if (lockTimerRef.current !== null) clearTimeout(lockTimerRef.current);
+    };
+  }, []);
+
+  return { activeIdx, setActive, requestHover, cancelHover };
+}
 
 /* ════════════════ Main ════════════════ */
 
 export function ServicesGrid() {
-  return (
-    <section
-      id="servicios"
-      className="section-pad relative isolate overflow-hidden bg-[color:var(--color-paper)]"
-    >
-      {/* ── Depth layers (light premium) ───────────────────── */}
+  return <TiendaIndustrial />;
+}
 
-      {/* 1. Grid técnico tipo blueprint — navy 4.5% */}
+/* ════════════════ Capacidades — editorial gallery ════════════════ */
+
+// Configuración específica por familia: tags cortos + CTA + captions de thumbs
+const FAMILY_CONFIG: Array<{
+  description: string;
+  tags: string[];
+  ctaLabel: string;
+  ctaHref: string;
+  thumbCaptions: Array<{ title: string; short: string }>;
+}> = [
+  {
+    description:
+      "Diseño, instalación y mantenimiento de sistemas térmicos industriales y comerciales.",
+    tags: ["Climatización", "Instalación", "Mantenimiento"],
+    ctaLabel: "Ver servicios HVAC",
+    ctaHref: "/servicios/climatizacion-industrial-comercial",
+    thumbCaptions: [
+      {
+        title: "Instalación y puesta en marcha",
+        short: "Montaje y arranque de sistemas HVAC.",
+      },
+      {
+        title: "Mantenimiento técnico",
+        short: "Servicio preventivo y correctivo.",
+      },
+    ],
+  },
+  {
+    description:
+      "Fabricación e instalación de ductería metálica, líneas de agua helada y sistemas de ventilación industrial.",
+    tags: ["Ductería", "Agua helada", "Ventilación"],
+    ctaLabel: "Ver servicios de ductería",
+    ctaHref: "/servicios/ductos-metalicos",
+    thumbCaptions: [
+      {
+        title: "Agua helada",
+        short: "Tuberías y sistemas centrales.",
+      },
+      {
+        title: "Ventilación industrial",
+        short: "Extracción y renovación de aire.",
+      },
+    ],
+  },
+  {
+    description:
+      "Corte CNC láser y plasma, piezas, bases y soportes fabricados bajo plano del cliente.",
+    tags: ["CNC láser", "CNC plasma", "Piezas a medida"],
+    ctaLabel: "Ver fabricación CNC",
+    ctaHref: "/servicios/fabricacion-metalica-cnc",
+    thumbCaptions: [
+      {
+        title: "Piezas a la medida",
+        short: "Bases, soportes y componentes.",
+      },
+    ],
+  },
+];
+
+export function CapacidadesBlock() {
+  return (
+    <div className="section-pad relative">
+      {/* Textura grid sutil — mismo tratamiento continuo del video que la
+          presentación de la empresa, sin capa de oscuridad adicional ni
+          línea divisoria. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(15,42,71,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(15,42,71,0.045) 1px, transparent 1px)",
+            "linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)",
           backgroundSize: "56px 56px",
         }}
       />
 
-      {/* 2. Orb ámbar top-right — apenas perceptible, sin "tint amarillento" */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-40 -top-32 h-[34rem] w-[34rem] rounded-full bg-[color:var(--color-amber)]/[0.04] blur-[160px]"
-      />
-
-      {/* 3. Orb navy bottom-left — frío de contraste */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-40 -left-40 h-[40rem] w-[40rem] rounded-full bg-[color:var(--color-navy)]/8 blur-[140px]"
-      />
-
-      {/* 4. Hairlines top + bottom — separadores editoriales */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[color:var(--color-amber)]/45 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[color:var(--color-ink)]/15 to-transparent"
-      />
-
       <Container className="relative">
-        <SectionHeader />
-
-        <div className="mt-16 space-y-20 sm:mt-20 sm:space-y-28">
-          {serviceFamilies.map((family, idx) => (
-            <FamilyModule key={family.chip} family={family} index={idx} />
-          ))}
-        </div>
-
-        <TiendaRibbon />
-        <FinalCTA />
-      </Container>
-    </section>
-  );
-}
-
-/* ════════════════ Section header ════════════════ */
-
-function SectionHeader() {
-  return (
-    <Reveal>
-      <div className="flex flex-col items-start gap-8 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-3xl">
-          <Kicker>Capacidades</Kicker>
-          <h2 className="mt-4 font-[family-name:var(--font-display)] text-[32px] font-semibold leading-[1.08] tracking-[-0.02em] text-[color:var(--color-ink)] sm:text-[42px] lg:text-[52px]">
-            HVAC, ductería y fabricación industrial — bajo{" "}
-            <span className="text-[color:var(--color-amber-700)]">
-              una sola operación técnica
-            </span>
-            .
-          </h2>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-[color:var(--color-steel)] sm:text-[17px]">
-            Diseñamos, fabricamos e instalamos los sistemas que mantienen tu
-            operación industrial corriendo. Sin proveedores intermedios.
-          </p>
-        </div>
-
-        {/* Stat editorial — capacidades cuantificadas */}
-        <div className="hidden lg:block">
-          <div className="flex flex-col items-end gap-1 text-right">
-            <span className="font-[family-name:var(--font-display)] text-[64px] font-bold leading-none tracking-tight text-[color:var(--color-amber-700)]">
-              08
-            </span>
-            <span className="text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[color:var(--color-ink)]/55">
-              Servicios técnicos
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.28em] text-[color:var(--color-steel)]/70">
-              + 03 productos en preparación
-            </span>
+        {/* Compact header */}
+        <Reveal>
+          <div className="max-w-3xl">
+            <PremiumEyebrow>Capacidades técnicas</PremiumEyebrow>
+            <h2 className="title-shadow mt-4 font-[family-name:var(--font-display)] text-[26px] font-semibold leading-[1.15] tracking-tight text-white sm:text-[32px] lg:text-[36px]">
+              Todo lo necesario para llevar tu proyecto a{" "}
+              <span className="text-[color:var(--color-amber)]">
+                operación
+              </span>
+              .
+            </h2>
+            <p className="mt-3 text-[14.5px] leading-relaxed text-white/70 sm:text-[15px]">
+              Integramos ingeniería, fabricación e instalación para ejecutar
+              cada etapa con continuidad, control y precisión.
+            </p>
           </div>
-        </div>
-      </div>
-    </Reveal>
+        </Reveal>
+
+        <CapacidadesGallery />
+      </Container>
+    </div>
   );
 }
 
-/* ════════════════ Family module ════════════════ */
+function CapacidadesGallery() {
+  const { activeIdx, setActive, requestHover, cancelHover } =
+    useStableActiveIndex(0);
+  const reduce = useReducedMotion();
+  const total = serviceFamilies.length;
 
-function FamilyModule({
+  const goPrev = useCallback(() => {
+    setActive((activeIdx - 1 + total) % total);
+  }, [activeIdx, setActive, total]);
+
+  const goNext = useCallback(() => {
+    setActive((activeIdx + 1) % total);
+  }, [activeIdx, setActive, total]);
+
+  const handleKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      goPrev();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      goNext();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActive(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActive(total - 1);
+    }
+  };
+
+  return (
+    <div className="mt-10 sm:mt-12">
+      {/* Gallery */}
+      <div
+        role="tablist"
+        aria-label="Familias de servicios"
+        onKeyDown={handleKey}
+        onPointerLeave={cancelHover}
+        className="flex flex-row items-stretch gap-2 outline-none sm:gap-3"
+      >
+        {serviceFamilies.map((family, i) => (
+          <FamilyPanel
+            key={family.chip}
+            family={family}
+            index={i}
+            isActive={i === activeIdx}
+            onHover={() => requestHover(i)}
+            onActivate={() => setActive(i)}
+          />
+        ))}
+      </div>
+
+      {/* Controls — arrows + indicator */}
+      <div className="mt-6 flex items-center justify-between gap-4 sm:mt-8">
+        <ArrowControl
+          direction="prev"
+          ariaLabel={`Familia anterior: ${serviceFamilies[(activeIdx - 1 + total) % total].chip}`}
+          onClick={goPrev}
+        />
+
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          className="flex items-center gap-3 sm:gap-4"
+        >
+          {/* Número activo con AnimatePresence — naranja protagonista */}
+          <div className="relative h-7 w-8 overflow-hidden sm:h-8 sm:w-9">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={activeIdx}
+                initial={reduce ? false : { opacity: 0, y: -14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduce ? undefined : { opacity: 0, y: 14 }}
+                transition={{
+                  duration: 0.35,
+                  ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+                }}
+                className="absolute inset-0 flex items-center justify-center font-[family-name:var(--font-display)] text-[22px] font-bold tabular-nums tracking-tight text-[color:var(--color-amber)] sm:text-[26px]"
+              >
+                {String(activeIdx + 1).padStart(2, "0")}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+          {/* Línea de progreso ámbar */}
+          <span
+            aria-hidden
+            className="h-px w-12 bg-gradient-to-r from-[color:var(--color-amber)] via-[color:var(--color-amber)]/55 to-[color:var(--color-amber)]/15 sm:w-14"
+          />
+          <span className="font-[family-name:var(--font-display)] text-[13px] font-semibold tabular-nums uppercase tracking-[0.32em] text-[color:var(--color-amber)]/55 sm:text-[14px]">
+            {String(total).padStart(2, "0")}
+          </span>
+        </div>
+
+        <ArrowControl
+          direction="next"
+          ariaLabel={`Familia siguiente: ${serviceFamilies[(activeIdx + 1) % total].chip}`}
+          onClick={goNext}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ──────────── FamilyPanel ──────────── */
+
+function FamilyPanel({
   family,
   index,
+  isActive,
+  onHover,
+  onActivate,
 }: {
   family: ServiceFamily;
   index: number;
+  isActive: boolean;
+  onHover: () => void;
+  onActivate: () => void;
 }) {
   const reduce = useReducedMotion();
-  const FamilyIcon = FAMILY_ICONS[family.icon];
-  const isLast = index === serviceFamilies.length - 1;
+  const config = FAMILY_CONFIG[index];
+  const Icon = FAMILY_ICONS[family.icon];
+  const num = String(index + 1).padStart(2, "0");
 
-  const cardCount = family.services.length;
-  const gridCols =
-    cardCount >= 3 ? "lg:grid-cols-3" : "lg:grid-cols-2 lg:max-w-5xl";
+  // Main image + secondary thumbs
+  const mainImage = family.services[0].image;
+  const thumbs = family.services
+    .slice(1, 3)
+    .map((s) => ({ src: s.image, alt: s.title }));
 
   return (
-    <motion.div
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: false, amount: 0.15 }}
-      variants={familyHeaderVariants}
-      className="relative"
-    >
-      {/* Editorial header */}
-      <div className="mb-8 sm:mb-10">
-        {/* Index mono ámbar + label */}
-        <div className="flex items-baseline gap-4">
-          <span className="font-[family-name:var(--font-display)] text-[56px] font-bold leading-none tracking-tight text-[color:var(--color-amber-700)]/90 sm:text-[72px]">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.32em] text-[color:var(--color-ink)]/45">
-            Familia / {String(serviceFamilies.length).padStart(2, "0")}
-          </span>
-        </div>
-
-        {/* Hairline ámbar animada */}
-        <motion.span
-          aria-hidden
-          initial={reduce ? false : { scaleX: 0 }}
-          whileInView={{ scaleX: 1 }}
-          viewport={{ once: false, amount: 0.5 }}
-          transition={{
-            duration: 0.8,
-            ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
-          }}
-          className="mt-3 block h-px w-20 origin-left bg-gradient-to-r from-[color:var(--color-amber)] to-[color:var(--color-amber)]/0"
-        />
-
-        {/* Chip + title + body */}
-        <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-          <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-amber)]/40 bg-[color:var(--color-amber)]/8 px-3.5 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-amber-700)]">
-              <FamilyIcon className="size-3.5" />
-              {family.chip}
-            </span>
-            <h3 className="mt-4 font-[family-name:var(--font-display)] text-[22px] font-semibold leading-[1.15] tracking-tight text-[color:var(--color-ink)] sm:text-[28px] lg:text-[32px]">
-              {family.title}
-            </h3>
-          </div>
-          <p className="max-w-md text-sm leading-relaxed text-[color:var(--color-steel)] sm:text-[15px]">
-            {family.body}
-          </p>
-        </div>
-      </div>
-
-      {/* Service cards grid */}
-      <ul
-        className={cn(
-          "grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5",
-          gridCols,
-        )}
-      >
-        {family.services.map((s, i) => (
-          <ServiceCard key={s.title} service={s} index={i} />
-        ))}
-      </ul>
-
-      {/* Module divider — sólo entre familias */}
-      {!isLast && (
-        <div
-          aria-hidden
-          className="mt-20 h-px w-full bg-gradient-to-r from-transparent via-[color:var(--color-ink)]/12 to-transparent sm:mt-28"
-        />
+    <div
+      role="tab"
+      aria-selected={isActive}
+      aria-controls={`family-panel-${index}`}
+      id={`family-tab-${index}`}
+      style={{
+        // CSS-only flex-grow transition — no compite con Framer Motion
+        // Colapsado más ancho (1.25 en lugar de 1) para que el título completo respire.
+        flex: isActive ? "5 1 0%" : "1.25 1 0%",
+        transition: reduce
+          ? "none"
+          : "flex 400ms cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
+      className={cn(
+        "relative isolate h-[440px] min-w-0 overflow-hidden rounded-[var(--radius-xl)] border border-white/10 sm:h-[520px] lg:h-[580px]",
+        isActive ? "shadow-[var(--shadow-lift)]" : "shadow-[var(--shadow-soft)]",
       )}
-    </motion.div>
-  );
-}
-
-/* ════════════════ Service card (dark on light) ════════════════ */
-
-function ServiceCard({
-  service,
-  index,
-}: {
-  service: FamilyService;
-  index: number;
-}) {
-  const reduce = useReducedMotion();
-  const ref = useRef<HTMLLIElement | null>(null);
-  const isActive = useInView(ref, {
-    margin: "-25% 0px -25% 0px",
-    once: false,
-  });
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  return (
-    <motion.li
-      ref={ref}
-      custom={index}
-      variants={reduce ? undefined : cardVariants}
-      initial={reduce ? false : "hidden"}
-      whileInView={reduce ? undefined : "visible"}
-      viewport={{ once: false, amount: 0.25 }}
-      className="list-none"
     >
-      <Link
-        href={service.href}
-        className={cn(
-          "group relative block aspect-[4/5] overflow-hidden rounded-[var(--radius-xl)] bg-[color:var(--color-navy)] transition-shadow duration-700",
-          "shadow-[0_18px_45px_-22px_rgba(15,42,71,0.45)]",
-          isActive
-            ? "shadow-[0_28px_70px_-22px_rgba(15,42,71,0.55)]"
-            : "hover:shadow-[0_25px_60px_-20px_rgba(15,42,71,0.5)]",
-        )}
-        onMouseEnter={() => {
-          if (videoRef.current && !reduce)
-            videoRef.current.play().catch(() => {});
-        }}
-        onMouseLeave={() => {
-          if (videoRef.current) {
-            videoRef.current.pause();
-            videoRef.current.currentTime = 0;
-          }
-        }}
-      >
-        {/* Foto base */}
-        <Image
-          src={service.image}
-          alt={service.title}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover transition-transform duration-[1100ms] ease-out group-hover:scale-[1.08]"
-        />
-
-        {/* Video hover preview */}
-        {service.video && (
-          <video
-            ref={videoRef}
-            src={service.video}
-            muted
-            playsInline
-            loop
-            preload="none"
-            className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-          />
-        )}
-
-        {/* Velo dinámico — foto se "enciende" al active */}
+      {/* Visual layer — todos los hijos pointer-events-none */}
+      <div className="pointer-events-none absolute inset-0">
+        {/* Photo layer — visible solo en estado expandido */}
         <div
-          aria-hidden
           className={cn(
-            "absolute inset-0 transition-colors duration-700",
-            isActive
-              ? "bg-[color:var(--color-ink)]/20"
-              : "bg-[color:var(--color-ink)]/48",
-          )}
-        />
-
-        {/* Gradiente bottom — legibilidad del strip */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-[color:var(--color-ink)]/95 via-[color:var(--color-ink)]/35 to-transparent"
-        />
-
-        {/* Active spotlight ámbar */}
-        <div
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute inset-0 transition-opacity duration-700",
+            "absolute inset-0 transition-opacity duration-700",
             isActive ? "opacity-100" : "opacity-0",
           )}
-          style={{
-            background:
-              "radial-gradient(circle at 30% 0%, rgba(255,184,28,0.20), transparent 60%)",
-          }}
+        >
+          {/* Background image */}
+          <Image
+            src={mainImage}
+            alt=""
+            fill
+            sizes={
+              isActive
+                ? "(max-width: 1024px) 75vw, 60vw"
+                : "(max-width: 1024px) 16vw, 14vw"
+            }
+            className={cn(
+              "object-cover transition-transform duration-700",
+              isActive ? "scale-100" : "scale-[1.08]",
+            )}
+            priority={index === 0}
+          />
+
+          {/* Base dark veil */}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[color:var(--color-ink)]/28"
+          />
+
+          {/* Bottom gradient legibilidad */}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-t from-[color:var(--color-ink)]/95 via-[color:var(--color-ink)]/30 to-transparent"
+          />
+
+          {/* Amber wash al active */}
+          <AnimatePresence>
+            {isActive && (
+              <motion.div
+                key="amber"
+                aria-hidden
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(circle at 25% 0%, rgba(255,184,28,0.18), transparent 60%)",
+                }}
+              />
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Glass layer — visible solo en estado contraído (mismo acabado
+            cristal premium que las tarjetas de capacidades de la
+            presentación de la empresa: .glass-card) */}
+        <div
+          aria-hidden
+          className={cn(
+            "glass-card absolute inset-0 transition-opacity duration-700",
+            isActive ? "opacity-0" : "opacity-100",
+          )}
         />
 
-        {/* Top — category chip + index mono */}
-        <div className="absolute inset-x-5 top-5 flex items-start justify-between">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-white backdrop-blur-md">
-            <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-amber)]" />
-            {service.category}
-          </span>
-          <span className="font-[family-name:var(--font-display)] text-[11px] font-semibold tracking-tight text-white/55">
-            /{String(index + 1).padStart(2, "0")}
-          </span>
-        </div>
-
-        {/* Bottom — glass strip con título + short siempre visible */}
-        <div className="absolute inset-x-4 bottom-4 rounded-[var(--radius-lg)] border border-white/10 bg-[color:var(--color-ink)]/60 p-4 backdrop-blur-md transition-[border-color,background-color] duration-500 group-hover:border-[color:var(--color-amber)]/40 group-hover:bg-[color:var(--color-ink)]/70 sm:p-5">
-          <h4 className="title-shadow font-[family-name:var(--font-display)] text-[16px] font-semibold leading-tight text-white sm:text-[17px]">
-            {service.title}
-          </h4>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-white/80 line-clamp-2 sm:text-[13px]">
-            {service.short}
-          </p>
-          <div className="mt-3 flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-amber)] transition-transform group-hover:translate-x-1">
-              Ver detalle <ArrowRightIcon className="size-3" />
-            </span>
-            {service.video && (
-              <span className="font-[family-name:var(--font-display)] text-[9px] font-bold uppercase tracking-[0.32em] text-[color:var(--color-amber)]/75">
-                • Video
-              </span>
+        {/* Top — number + icon */}
+        <div className="absolute inset-x-4 top-4 z-10 flex items-start justify-between sm:inset-x-5 sm:top-5">
+          <span
+            className={cn(
+              "font-[family-name:var(--font-display)] font-bold leading-none tabular-nums tracking-tight transition-colors duration-500",
+              isActive
+                ? "text-[30px] text-[color:var(--color-amber)] sm:text-[36px]"
+                : "text-[24px] text-[color:var(--color-amber)] [text-shadow:0_2px_12px_rgba(11,17,32,0.6)] sm:text-[28px]",
             )}
-          </div>
+          >
+            {num}
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center justify-center rounded-md p-1.5 backdrop-blur-md transition-colors duration-500",
+              isActive
+                ? "border border-[color:var(--color-amber)]/55 bg-[color:var(--color-amber)]/15 text-[color:var(--color-amber)]"
+                : "border border-white/25 bg-white/12 text-white",
+            )}
+          >
+            <Icon className="size-3.5" />
+          </span>
         </div>
 
-        {/* Active inset border-glow — sin layout shift */}
+        {/* Collapsed-only: título vertical con letras UPRIGHT (no acostadas) */}
+        <AnimatePresence>
+          {!isActive && (
+            <motion.span
+              key="vertical-title"
+              initial={reduce ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? undefined : { opacity: 0, y: -4 }}
+              transition={{ duration: 0.45, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              aria-hidden
+              style={{
+                writingMode: "vertical-rl",
+                textOrientation: "upright",
+                letterSpacing: "0.04em",
+              }}
+              className="absolute left-1/2 top-1/2 max-h-[88%] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap font-[family-name:var(--font-display)] text-[11px] font-bold uppercase leading-none text-white [text-shadow:0_2px_12px_rgba(11,17,32,0.6)] sm:text-[13px] lg:text-[14px]"
+            >
+              {family.shortLabel}
+            </motion.span>
+          )}
+        </AnimatePresence>
+
+        {/* Active-only: editorial collage (thumbs + content) */}
+        <AnimatePresence>
+          {isActive && (
+            <motion.div
+              key="active-content"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="absolute inset-0"
+            >
+              {/* Top-right collage — thumbs grandes con marco blanco + caption */}
+              {thumbs.length > 0 && (
+                <div className="absolute right-5 top-14 hidden flex-row gap-4 sm:right-6 sm:top-16 sm:flex sm:gap-5">
+                  {thumbs.map((t, ti) => {
+                    const caption = config.thumbCaptions[ti];
+                    return (
+                      <motion.div
+                        key={t.src}
+                        initial={
+                          reduce
+                            ? false
+                            : { opacity: 0, x: 24, scale: 0.96 }
+                        }
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={
+                          reduce ? undefined : { opacity: 0, x: 24 }
+                        }
+                        transition={{
+                          duration: 0.5,
+                          delay: 0.22 + ti * 0.09,
+                          ease: [0.16, 1, 0.3, 1] as [
+                            number,
+                            number,
+                            number,
+                            number,
+                          ],
+                        }}
+                        className="pointer-events-auto relative z-30 h-32 w-48 overflow-hidden rounded-[var(--radius-md)] border border-white/15 shadow-[0_22px_46px_-14px_rgba(0,0,0,0.55)] transition-colors duration-300 hover:border-[color:var(--color-amber)]/50 sm:h-40 sm:w-56 lg:h-44 lg:w-60"
+                      >
+                        <Image
+                          src={t.src}
+                          alt={caption?.title ?? t.alt}
+                          fill
+                          sizes="(max-width: 1024px) 224px, 240px"
+                          className="object-cover"
+                        />
+                        {/* Gradient overlay discreto para legibilidad */}
+                        <div
+                          aria-hidden
+                          className="absolute inset-0 bg-gradient-to-t from-[color:var(--color-ink)]/90 via-[color:var(--color-ink)]/25 to-transparent"
+                        />
+                        {/* Caption editorial */}
+                        {caption && (
+                          <div className="absolute inset-x-3 bottom-2.5 text-white">
+                            <p className="font-[family-name:var(--font-display)] text-[11px] font-semibold leading-tight [text-shadow:0_1px_4px_rgba(0,0,0,0.4)]">
+                              {caption.title}
+                            </p>
+                            <p className="mt-0.5 text-[10px] leading-snug text-white/80 line-clamp-2">
+                              {caption.short}
+                            </p>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Bottom — title + desc + tags + CTA */}
+              <div className="absolute inset-x-5 bottom-5 sm:inset-x-7 sm:bottom-7">
+                <h3 className="title-shadow font-[family-name:var(--font-display)] text-[20px] font-semibold leading-tight text-white sm:text-[24px] lg:text-[28px]">
+                  {family.chip}
+                </h3>
+                <p className="mt-2 max-w-[42rem] text-[13px] leading-relaxed text-white/85 sm:text-[14px]">
+                  {config.description}
+                </p>
+                <ul className="mt-4 flex flex-wrap gap-1.5">
+                  {config.tags.map((tag) => (
+                    <li
+                      key={tag}
+                      className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur-md"
+                    >
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA — z-30 para que esté por encima del hit area */}
+                <Link
+                  href={config.ctaHref}
+                  className="group/cta pointer-events-auto relative z-30 mt-5 inline-flex items-center gap-2 rounded-full border border-[color:var(--color-amber)]/55 bg-[color:var(--color-amber)]/15 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-amber)] backdrop-blur-md transition-all duration-300 hover:border-[color:var(--color-amber)] hover:bg-[color:var(--color-amber)]/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-amber)]/70"
+                >
+                  {config.ctaLabel}
+                  <ArrowRightIcon className="size-3.5 transition-transform group-hover/cta:translate-x-0.5" />
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Active inset ring ámbar */}
         <span
           aria-hidden
           className={cn(
@@ -443,152 +667,62 @@ function ServiceCard({
               : "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
           )}
         />
-      </Link>
-    </motion.li>
-  );
-}
+      </div>
 
-/* ════════════════ Tienda ribbon (light tenue) ════════════════ */
-
-function TiendaRibbon() {
-  const reduce = useReducedMotion();
-
-  return (
-    <div className="mt-24 sm:mt-32">
-      <Reveal>
-        <div className="border-t border-[color:var(--color-ink)]/12 pt-10 sm:pt-14">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div className="max-w-xl">
-              <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-ink)]/15 bg-white px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-ink)]">
-                <TruckIcon className="size-3.5 text-[color:var(--color-amber)]" />
-                Próximamente en tienda industrial
-              </span>
-              <h3 className="mt-4 font-[family-name:var(--font-display)] text-[22px] font-semibold leading-tight text-[color:var(--color-ink)] sm:text-[26px]">
-                Catálogo de productos industriales en preparación.
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-[color:var(--color-steel)] sm:text-[15px]">
-                Refacciones, redilas, bases y partes industriales se integran al
-                catálogo en línea cuando se publique la tienda. Mientras tanto,
-                se cotizan directo.
-              </p>
-            </div>
-            <span className="font-[family-name:var(--font-display)] text-[11px] font-semibold uppercase tracking-[0.32em] text-[color:var(--color-ink)]/35">
-              03 / En preparación
-            </span>
-          </div>
-        </div>
-      </Reveal>
-
-      <ul className="mt-8 grid grid-cols-1 gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-4">
-        {tiendaProducts.map((p, i) => (
-          <TiendaCard key={p.title} product={p} index={i} reduce={!!reduce} />
-        ))}
-      </ul>
+      {/* Hit area — botón único z-20, encima de la capa visual pero debajo del CTA z-30 */}
+      <button
+        type="button"
+        tabIndex={isActive ? 0 : -1}
+        aria-label={`Familia ${num}: ${family.chip}`}
+        onPointerEnter={onHover}
+        onClick={onActivate}
+        onFocus={onActivate}
+        className={cn(
+          "absolute inset-0 z-20 block w-full cursor-pointer rounded-[var(--radius-xl)] outline-none",
+          "focus-visible:ring-2 focus-visible:ring-[color:var(--color-amber)]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-ink)]",
+        )}
+      />
     </div>
   );
 }
 
-function TiendaCard({
-  product,
-  index,
-  reduce,
+/* ──────────── ArrowControl ──────────── */
+
+function ArrowControl({
+  direction,
+  ariaLabel,
+  onClick,
 }: {
-  product: TiendaProduct;
-  index: number;
-  reduce: boolean;
+  direction: "prev" | "next";
+  ariaLabel: string;
+  onClick: () => void;
 }) {
-  const ref = useRef<HTMLLIElement | null>(null);
-  const isActive = useInView(ref, {
-    margin: "-25% 0px -25% 0px",
-    once: false,
-  });
-
+  const Icon = direction === "prev" ? ChevronLeftIcon : ChevronRightIcon;
   return (
-    <motion.li
-      ref={ref}
-      custom={index}
-      variants={reduce ? undefined : cardVariants}
-      initial={reduce ? false : "hidden"}
-      whileInView={reduce ? undefined : "visible"}
-      viewport={{ once: false, amount: 0.25 }}
-      className="list-none"
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={cn(
+        // Reposo: blanco + borde ámbar + icono ámbar.
+        "group relative inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[color:var(--color-amber)]/45 bg-white text-[color:var(--color-amber)] outline-none transition-all duration-300",
+        // Hover: fondo ámbar + icono blanco + sombra ámbar suave.
+        "hover:border-[color:var(--color-amber)] hover:bg-[color:var(--color-amber)] hover:text-white hover:shadow-[0_10px_26px_-10px_rgba(255,184,28,0.55)]",
+        // Pressed: ámbar más oscuro, scale leve.
+        "active:scale-[0.96] active:bg-[color:var(--color-amber-700)] active:border-[color:var(--color-amber-700)]",
+        // Focus visible: ring ámbar.
+        "focus-visible:border-[color:var(--color-amber)] focus-visible:ring-2 focus-visible:ring-[color:var(--color-amber)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-ink)]",
+        "sm:h-12 sm:w-12",
+      )}
     >
-      <Link
-        href={product.href}
+      <Icon
         className={cn(
-          "group relative flex h-full min-h-[200px] flex-col justify-between overflow-hidden rounded-[var(--radius-xl)] border bg-[color:var(--color-bone)] p-5 transition-all duration-500 sm:p-6",
-          isActive
-            ? "border-[color:var(--color-amber)]/35 shadow-[var(--shadow-soft)]"
-            : "border-[color:var(--color-ash-200)]",
-          "hover:-translate-y-0.5 hover:border-[color:var(--color-amber)]/45 hover:shadow-[var(--shadow-lift)]",
+          "size-4 transition-transform duration-300 sm:size-[18px]",
+          direction === "prev"
+            ? "group-hover:-translate-x-0.5 group-active:-translate-x-1"
+            : "group-hover:translate-x-0.5 group-active:translate-x-1",
         )}
-      >
-        {/* Top — chip + icono */}
-        <div className="flex items-start justify-between">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-ink)]/15 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-ink)]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--color-navy)]" />
-            Producto
-          </span>
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[color:var(--color-amber)]/25 bg-[color:var(--color-amber)]/10 text-[color:var(--color-amber-700)] transition-colors group-hover:border-[color:var(--color-amber)]/50">
-            <TruckIcon className="size-3.5" />
-          </span>
-        </div>
-
-        {/* Body */}
-        <div>
-          <h4 className="font-[family-name:var(--font-display)] text-base font-semibold leading-tight text-[color:var(--color-ink)] sm:text-[17px]">
-            {product.title}
-          </h4>
-          <p className="mt-1.5 text-[12.5px] leading-relaxed text-[color:var(--color-steel)] line-clamp-2 sm:text-[13px]">
-            {product.short}
-          </p>
-          <span className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-amber-700)] transition-transform group-hover:translate-x-1">
-            {product.hint} <ArrowRightIcon className="size-3" />
-          </span>
-        </div>
-      </Link>
-    </motion.li>
-  );
-}
-
-/* ════════════════ Final CTA — cinematográfico light ════════════════ */
-
-function FinalCTA() {
-  return (
-    <Reveal>
-      <div className="relative mt-24 text-center sm:mt-32">
-        {/* Hairline ámbar superior */}
-        <div
-          aria-hidden
-          className="mx-auto mb-10 h-px w-24 bg-gradient-to-r from-transparent via-[color:var(--color-amber)] to-transparent sm:mb-14"
-        />
-        <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-ink)]/15 bg-white px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-ink)]">
-          Catálogo completo
-        </span>
-        <p className="mx-auto mt-6 max-w-3xl font-[family-name:var(--font-display)] text-[26px] font-semibold leading-[1.15] tracking-[-0.01em] text-[color:var(--color-ink)] sm:text-[34px] lg:text-[40px]">
-          Cada servicio con su{" "}
-          <span className="text-[color:var(--color-amber-700)]">
-            proceso técnico, aplicaciones
-          </span>{" "}
-          y galería de obra real.
-        </p>
-
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Button href="/servicios" variant="dark" size="lg">
-            Ver servicios completos
-            <ArrowRightIcon className="size-4" />
-          </Button>
-          <Button
-            href={whatsappLink("Hola JSD, quiero cotizar un proyecto técnico.")}
-            target="_blank"
-            variant="whatsapp"
-            size="lg"
-          >
-            <WhatsAppIcon className="size-4" />
-            Cotizar proyecto
-          </Button>
-        </div>
-      </div>
-    </Reveal>
+      />
+    </button>
   );
 }

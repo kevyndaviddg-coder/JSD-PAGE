@@ -11,19 +11,22 @@
  *     <div relative z-10 -mt-[100vh]>          ← contenido ENCIMA del video,
  *       <HeroScene />                            en FLUJO NORMAL (no absolute)
  *       <AboutScene />
+ *       <CapacidadesBlock />
  *       <GalleryScene />
- *       <TimelineScene />
  *     </div>
  *   </section>
- *   → luego la página sigue con <ServicesGrid /> sobre fondo claro.
+ *   → luego la página sigue con <CapabilitiesCNC /> (fondo claro) y un
+ *     segundo bloque cinematográfico, <ProcessEvolutionBlock />, que repite
+ *     la misma arquitectura (StickyVideoBackground propio) para
+ *     <ProcessTimeline /> + <TimelineScene />.
  *
  * Por qué es estable (vs la versión anterior rota):
  *   - NO hay paneles `absolute inset-0` apilados → no hay empalme.
  *   - NO hay fades cruzados entre paneles → cada escena revela sola.
  *   - NO hay scroll horizontal anidado dentro del sticky → timeline funciona.
  *   - NO hay `h-[640vh]` artificial con un solo scrollYProgress global.
- *   - El video sticky acompaña Hero→About→Gallery→Timeline de forma natural
- *     porque el contenido se monta encima con margin-top negativo.
+ *   - El video sticky acompaña Hero→About→Capacidades→Gallery de forma
+ *     natural porque el contenido se monta encima con margin-top negativo.
  *
  * Performance:
  *   - Un solo <video> activo a la vez (crossfade con AnimatePresence).
@@ -63,15 +66,26 @@ import {
 import { Reveal, RevealStagger, RevealItem } from "@/components/motion/Reveal";
 import { heroClips, heroFallback, whatsappLink } from "@/lib/site";
 import { cn } from "@/lib/utils";
+import { CapacidadesBlock } from "@/components/sections/ServicesGrid";
+import { ProcessTimeline } from "@/components/sections/ProcessTimeline";
 
 /* ═══════════════════════ Sticky video background ═══════════════════ */
 
-function StickyVideoBackground({ sectionRef }: { sectionRef: React.RefObject<HTMLElement | null> }) {
+function StickyVideoBackground({
+  sectionRef,
+  clips = heroClips,
+  fallback = heroFallback,
+}: {
+  sectionRef: React.RefObject<HTMLElement | null>;
+  clips?: ReadonlyArray<{ src: string; label: string }>;
+  fallback?: string;
+}) {
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [inView, setInView] = useState(true);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const tickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const singleClip = clips.length <= 1;
 
   // Pausar reproducción cuando la intro sale del viewport (performance).
   useEffect(() => {
@@ -90,7 +104,7 @@ function StickyVideoBackground({ sectionRef }: { sectionRef: React.RefObject<HTM
     if (reduce) return;
     const v = videoRef.current;
     if (!v) return;
-    const next = () => setIndex((i) => (i + 1) % heroClips.length);
+    const next = () => setIndex((i) => (i + 1) % clips.length);
     v.addEventListener("ended", next);
     if (inView) {
       v.play().catch(() => {});
@@ -105,7 +119,7 @@ function StickyVideoBackground({ sectionRef }: { sectionRef: React.RefObject<HTM
       v.removeEventListener("ended", next);
       if (tickRef.current) clearTimeout(tickRef.current);
     };
-  }, [index, reduce, inView]);
+  }, [index, reduce, inView, clips.length]);
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[color:var(--color-ink)]">
@@ -113,17 +127,18 @@ function StickyVideoBackground({ sectionRef }: { sectionRef: React.RefObject<HTM
         <div
           aria-hidden
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroFallback})` }}
+          style={{ backgroundImage: `url(${fallback})` }}
         />
       ) : (
         <AnimatePresence mode="wait">
           <motion.video
-            key={heroClips[index].src}
+            key={clips[index].src}
             ref={videoRef}
-            src={heroClips[index].src}
-            poster={heroFallback}
+            src={clips[index].src}
+            poster={fallback}
             autoPlay
             muted
+            loop={singleClip}
             playsInline
             preload={index === 0 ? "auto" : "metadata"}
             initial={{ opacity: 0 }}
@@ -346,6 +361,11 @@ const GALLERY: Array<{ src: string; caption: string; category: string; tall?: bo
     caption: "Fabricación de bases para equipos HVAC",
     category: "FABRICACIÓN",
   },
+  {
+    src: "/media/jsd/02_instalacion-exterior-de-ventilacion-industrial_8k.jpg",
+    caption: "Instalación exterior de ventilación industrial",
+    category: "VENTILACIÓN",
+  },
 ];
 
 // Variants repetibles (entrada + salida) para las cards de evidencia.
@@ -373,7 +393,10 @@ function GalleryScene() {
       <Container>
         <Reveal>
           <div className="flex items-end justify-between gap-4">
-            <h3 className="font-[family-name:var(--font-display)] text-xl font-semibold text-white sm:text-2xl">
+            <h3
+              data-navbar-hide-anchor
+              className="font-[family-name:var(--font-display)] text-xl font-semibold text-white sm:text-2xl"
+            >
               Obra real, ejecutada por JSD
             </h3>
             <span className="hidden sm:inline text-xs uppercase tracking-[0.22em] text-white/55">
@@ -590,7 +613,7 @@ const ERAS: Era[] = [
  *  · Todas las animaciones se desactivan (initial=false, sin scale/rotate),
  *    la línea de progreso queda llena (scaleY=1) para no parecer rota.
  */
-function TimelineScene() {
+export function TimelineScene() {
   const reduce = useReducedMotion();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -603,8 +626,19 @@ function TimelineScene() {
 
   return (
     <div className="relative pt-14 pb-28 sm:pt-20 sm:pb-36">
-      {/* refuerzo de oscuridad local para legibilidad del timeline sobre video */}
-      <div aria-hidden className="absolute inset-0 bg-[color:var(--color-ink)]/55" />
+      {/* Refuerzo de oscuridad local para legibilidad — gradient vertical
+          que arranca transparente arriba (los videos siguen visibles y en
+          movimiento, sin corte horizontal duro contra la escena previa) y
+          alcanza ink/55 hacia el centro. Conserva el contraste necesario
+          para el timeline sin oscurecer las cards superiores. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(11,17,32,0) 0%, rgba(11,17,32,0.18) 18%, rgba(11,17,32,0.42) 45%, rgba(11,17,32,0.55) 75%, rgba(11,17,32,0.55) 100%)",
+        }}
+      />
       <Container className="relative">
         <Reveal>
           <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80 backdrop-blur">
@@ -810,7 +844,43 @@ export function CinematicIntro() {
       <div className="relative z-10 -mt-[100vh]">
         <HeroScene />
         <AboutScene />
+        <CapacidadesBlock />
         <GalleryScene />
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════ Segundo bloque cinematográfico — Proceso + Evolución ═══════ */
+
+const PROCESS_CLIPS = [
+  {
+    src: "/media/jsd/video/proceso-campo.mp4",
+    label: "Proceso de cotización y trabajo en campo",
+  },
+];
+
+/**
+ * ProcessEvolutionBlock — reutiliza la misma arquitectura sticky-video que
+ * CinematicIntro (StickyVideoBackground compartido) para que "Proceso de
+ * cotización" y "Línea de evolución" compartan una única instancia continua
+ * de video, sin reiniciarse entre ambas escenas.
+ */
+export function ProcessEvolutionBlock() {
+  const sectionRef = useRef<HTMLElement | null>(null);
+
+  return (
+    <section
+      ref={sectionRef}
+      aria-label="Proceso de cotización y línea de evolución JSD"
+      className="relative isolate bg-[color:var(--color-ink)] text-white"
+    >
+      <div className="sticky top-0 h-screen w-full">
+        <StickyVideoBackground sectionRef={sectionRef} clips={PROCESS_CLIPS} />
+      </div>
+
+      <div className="relative z-10 -mt-[100vh]">
+        <ProcessTimeline />
         <TimelineScene />
       </div>
     </section>

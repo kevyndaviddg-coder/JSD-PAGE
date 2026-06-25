@@ -1,9 +1,6 @@
-import { CinematicIntro } from "@/components/sections/CinematicIntro";
+import { CinematicIntro, ProcessEvolutionBlock } from "@/components/sections/CinematicIntro";
 import { ServicesGrid } from "@/components/sections/ServicesGrid";
 import { CapabilitiesCNC } from "@/components/sections/CapabilitiesCNC";
-import { ProcessTimeline } from "@/components/sections/ProcessTimeline";
-import { ProjectsTeaser } from "@/components/sections/ProjectsTeaser";
-import { BlogTeaser } from "@/components/sections/BlogTeaser";
 import { ContactCTA } from "@/components/sections/ContactCTA";
 
 /**
@@ -20,11 +17,9 @@ export default function HomePage() {
   return (
     <>
       <CinematicIntro />
-      <ServicesGrid />
       <CapabilitiesCNC />
-      <ProcessTimeline />
-      <ProjectsTeaser />
-      <BlogTeaser />
+      <ProcessEvolutionBlock />
+      <ServicesGrid />
       <ContactCTA />
     </>
   );

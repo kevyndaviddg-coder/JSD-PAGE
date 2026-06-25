@@ -8,17 +8,19 @@
  * icon container, title + description + benefits list con checkmarks.
  *
  * Adaptación industrial JSD:
- * - Fondo dark + video sutil (mantengo del pase anterior).
+ * - Escena de contenido sin fondo/video propios: se monta dentro del
+ *   segundo bloque cinematográfico (ProcessEvolutionBlock, en
+ *   CinematicIntro.tsx) que provee el video sticky compartido con
+ *   TimelineScene.
  * - 4 etapas (no 3 como el patrón) — el connector se ajusta a 4 columnas.
  * - Benefits list con CheckIcon real (no fake bullets).
  * - Cada card glass + hover lift + whileTap microinteracción.
  * - Motion (motion/react) — sin framer-motion.
  */
 
-import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Container } from "@/components/ui/Container";
-import { Kicker } from "@/components/ui/Kicker";
+import { PremiumEyebrow } from "@/components/ui/PremiumEyebrow";
 import { Button } from "@/components/ui/Button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/motion/Reveal";
 import {
@@ -83,46 +85,14 @@ const STEPS = [
 
 export function ProcessTimeline() {
   const reduce = useReducedMotion();
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const isVisible = entries[0]?.isIntersecting ?? false;
-        if (isVisible) v.play().catch(() => {});
-        else v.pause();
-      },
-      { threshold: 0.2 },
-    );
-    obs.observe(v);
-    return () => obs.disconnect();
-  }, []);
 
   return (
-    <section
-      id="cotizar"
-      className="section-pad relative isolate overflow-hidden bg-[color:var(--color-ink)] text-white"
-    >
-      <div aria-hidden className="absolute inset-0">
-        <video
-          ref={videoRef}
-          src="/media/jsd/video/proceso-campo.mp4"
-          muted
-          loop
-          playsInline
-          preload="none"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[color:var(--color-ink)]/90 via-[color:var(--color-ink)]/80 to-[color:var(--color-ink)]/95" />
-      </div>
-
+    <div id="cotizar" className="section-pad relative">
       <Container className="relative">
         {/* Header */}
         <Reveal>
           <div className="mx-auto max-w-3xl text-center">
-            <Kicker tone="bone">Cotiza tu proyecto</Kicker>
+            <PremiumEyebrow>Proceso de cotización</PremiumEyebrow>
             <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl lg:text-[48px]">
               Un proceso estructurado que asegura{" "}
               <span className="text-[color:var(--color-amber)]">calidad y cumplimiento</span>
@@ -241,6 +211,6 @@ export function ProcessTimeline() {
           </div>
         </Reveal>
       </Container>
-    </section>
+    </div>
   );
 }

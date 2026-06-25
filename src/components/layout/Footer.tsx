@@ -58,7 +58,9 @@ const LEGAL = [
 ];
 
 export function Footer() {
-  const mapSrc = `https://www.google.com/maps?q=${site.contact.mapsQuery}&output=embed`;
+  // Mapa relocado a la sección ContactCTA. Footer mantiene los datos de
+  // contacto en un strip compacto 4-col para que la información siga viva
+  // page-wide sin duplicar el iframe pesado.
 
   return (
     <footer className="bg-[color:var(--color-ink)] text-white">
@@ -115,74 +117,74 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Mid row — contact + map */}
-          <div className="mt-14 grid gap-8 border-t border-white/10 pt-10 lg:grid-cols-[1fr_1.2fr] lg:gap-12">
-            {/* Contact */}
-            <div>
-              <h4 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55 mb-5">
-                Contacto directo
-              </h4>
-              <ul className="space-y-4 text-sm text-white/85">
-                <li className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/8 text-[color:var(--color-amber)]">
-                    <MapPinIcon className="size-4" />
-                  </span>
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">Ubicación</div>
-                    <span className="leading-relaxed">{site.contact.address}</span>
+          {/* Mid row — contact strip 4-col (mapa relocado a ContactCTA) */}
+          <div className="mt-14 border-t border-white/10 pt-10">
+            <h4 className="mb-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
+              Contacto directo
+            </h4>
+            <ul className="grid gap-6 text-sm text-white/85 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+              <li className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/8 text-[color:var(--color-amber)]">
+                  <MapPinIcon className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">
+                    Ubicación
                   </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/8 text-[color:var(--color-amber)]">
-                    <PhoneIcon className="size-4" />
-                  </span>
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">Teléfono</div>
-                    <a href={site.contact.phoneLandlineHref} className="block hover:text-white">{site.contact.phoneLandline}</a>
-                    <a href={site.contact.phoneMobileHref} className="block hover:text-white">{site.contact.phoneMobile}</a>
+                  <span className="block leading-relaxed">{site.contact.address}</span>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/8 text-[color:var(--color-amber)]">
+                  <PhoneIcon className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">
+                    Teléfono
                   </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/8 text-[color:var(--color-amber)]">
-                    <MailIcon className="size-4" />
-                  </span>
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">Correo</div>
-                    <a href={`mailto:${site.contact.email1}`} className="block hover:text-white">{site.contact.email1}</a>
-                    <a href={`mailto:${site.contact.email2}`} className="block hover:text-white">{site.contact.email2}</a>
+                  <a href={site.contact.phoneLandlineHref} className="block hover:text-white">
+                    {site.contact.phoneLandline}
+                  </a>
+                  <a href={site.contact.phoneMobileHref} className="block hover:text-white">
+                    {site.contact.phoneMobile}
+                  </a>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/8 text-[color:var(--color-amber)]">
+                  <MailIcon className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">
+                    Correo
                   </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--color-whatsapp)]/15 text-[color:var(--color-whatsapp)]">
-                    <WhatsAppIcon className="size-4" />
-                  </span>
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">WhatsApp</div>
-                    <a
-                      href={`https://wa.me/${site.contact.whatsappNumber}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-white"
-                    >
-                      Escríbenos por WhatsApp
-                    </a>
+                  <a href={`mailto:${site.contact.email1}`} className="block break-all hover:text-white">
+                    {site.contact.email1}
+                  </a>
+                  <a href={`mailto:${site.contact.email2}`} className="block break-all hover:text-white">
+                    {site.contact.email2}
+                  </a>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[color:var(--color-whatsapp)]/15 text-[color:var(--color-whatsapp)]">
+                  <WhatsAppIcon className="size-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/50">
+                    WhatsApp
                   </div>
-                </li>
-              </ul>
-            </div>
-
-            {/* Map */}
-            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-white/10 shadow-[var(--shadow-lift)]">
-              <iframe
-                title="Mapa de ubicación JSD Air Systems"
-                src={mapSrc}
-                width="100%"
-                height="100%"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="block w-full h-72 lg:h-full min-h-64 grayscale-[0.2] contrast-[1.05]"
-              />
-            </div>
+                  <a
+                    href={`https://wa.me/${site.contact.whatsappNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block hover:text-white"
+                  >
+                    Escríbenos por WhatsApp
+                  </a>
+                </div>
+              </li>
+            </ul>
           </div>
         </div>
 
