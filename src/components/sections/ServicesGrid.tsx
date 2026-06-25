@@ -524,10 +524,12 @@ function FamilyPanel({
           </span>
           <span
             className={cn(
-              "inline-flex items-center justify-center rounded-md p-1.5 backdrop-blur-md transition-colors duration-500",
+              "items-center justify-center rounded-md p-1.5 backdrop-blur-md transition-colors duration-500",
               isActive
-                ? "border border-[color:var(--color-amber)]/55 bg-[color:var(--color-amber)]/15 text-[color:var(--color-amber)]"
-                : "border border-white/25 bg-white/12 text-white",
+                ? "inline-flex border border-[color:var(--color-amber)]/55 bg-[color:var(--color-amber)]/15 text-[color:var(--color-amber)]"
+                // Colapsado en móvil: oculto (saturaba el espacio junto al
+                // número). Desde sm+ se conserva el comportamiento actual.
+                : "hidden border border-white/25 bg-white/12 text-white sm:inline-flex",
             )}
           >
             <Icon className="size-3.5" />

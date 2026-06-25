@@ -28,7 +28,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { AnimatePresence, motion, useReducedMotion, type PanInfo } from "motion/react";
 import { Container } from "@/components/ui/Container";
 import { PremiumEyebrow } from "@/components/ui/PremiumEyebrow";
@@ -170,17 +175,6 @@ export function TiendaIndustrial() {
               Explorar tienda industrial
               <ArrowRightIcon className="size-4" />
             </Button>
-            <Button
-              href={whatsappLink(
-                "Hola JSD, quiero cotizar un producto / partes industriales.",
-              )}
-              target="_blank"
-              variant="whatsapp"
-              size="lg"
-            >
-              <WhatsAppIcon className="size-5" />
-              Cotizar un producto
-            </Button>
           </Reveal>
         </div>
 
@@ -229,10 +223,22 @@ function ShowcaseSelector() {
   const reduce = useReducedMotion();
   const [active, setActive] = useState(0);
   const cat = CATEGORIES[active];
+  const total = CATEGORIES.length;
+  const pillRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  const go = (i: number) => setActive(((i % CATEGORIES.length) + CATEGORIES.length) % CATEGORIES.length);
+  const go = (i: number) => setActive(((i % total) + total) % total);
   const prev = () => go(active - 1);
   const next = () => go(active + 1);
+
+  // La categoría activa del selector siempre debe quedar visible, sin
+  // importar el método de cambio (click, swipe, teclado o flechas).
+  useEffect(() => {
+    pillRefs.current[active]?.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [active, reduce]);
 
   const handleKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowLeft") {
@@ -294,8 +300,10 @@ function ShowcaseSelector() {
         </AnimatePresence>
 
         {/* Panel de cristal premium con la info comercial — fijo a la
-            izquierda, centrado verticalmente, en todos los breakpoints. */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-start p-6 sm:p-10">
+            izquierda, centrado verticalmente, en todos los breakpoints. En
+            móvil se reduce ancho/padding para no cubrir casi toda la foto y
+            para dejar espacio a las flechas laterales en escritorio. */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-start p-4 sm:p-10 sm:pl-24">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={cat.title}
@@ -303,20 +311,20 @@ function ShowcaseSelector() {
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
               transition={{ duration: 0.45, ease: EASE, delay: 0.08 }}
-              className="pointer-events-auto max-w-md rounded-[var(--radius-lg)] border border-white/20 bg-white/10 p-5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:p-6"
+              className="pointer-events-auto max-w-[13rem] rounded-[var(--radius-lg)] border border-white/20 bg-white/10 p-3.5 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:max-w-md sm:p-6"
             >
               <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--color-amber)]/45 bg-[color:var(--color-amber)]/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
                 {cat.tag}
               </span>
-              <h3 className="mt-3 font-[family-name:var(--font-display)] text-[22px] font-semibold leading-tight text-white sm:text-[26px]">
+              <h3 className="mt-3 font-[family-name:var(--font-display)] text-[18px] font-semibold leading-tight text-white sm:text-[22px] lg:text-[26px]">
                 {cat.title}
               </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/85 sm:text-[14px]">
+              <p className="mt-2 text-[12px] leading-relaxed text-white/85 sm:text-[13px] lg:text-[14px]">
                 {cat.short}
               </p>
               <Link
                 href={cat.href}
-                className="group mt-4 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-amber)] outline-none focus-visible:underline"
+                className="group mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--color-amber)] outline-none focus-visible:underline sm:mt-4"
               >
                 Ver categoría
                 <ArrowRightIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-1" />
@@ -325,11 +333,29 @@ function ShowcaseSelector() {
           </AnimatePresence>
         </div>
 
-        {/* Flechas */}
-        <div className="absolute inset-x-4 top-1/2 hidden -translate-y-1/2 items-center justify-between sm:flex">
+        {/* Flechas — en escritorio, en los extremos de la imagen sin
+            empalmar con el panel de cristal (que arranca después de pl-24).
+            En móvil se ocultan aquí: viven debajo de la imagen junto al
+            contador, en una zona independiente que no cubre contenido. */}
+        <div className="absolute inset-x-3 top-1/2 hidden -translate-y-1/2 items-center justify-between sm:flex">
           <CarouselArrow direction="prev" ariaLabel="Categoría anterior" onClick={prev} />
           <CarouselArrow direction="next" ariaLabel="Categoría siguiente" onClick={next} />
         </div>
+
+        {/* Contador discreto — en escritorio, esquina inferior derecha de la
+            imagen, sin tocar el panel de cristal (izquierda). */}
+        <div className="absolute bottom-4 right-4 hidden sm:block">
+          <ShowcaseCounter active={active} total={total} variant="glass" />
+        </div>
+      </div>
+
+      {/* Zona independiente móvil: flechas + contador debajo de la imagen,
+          sin cubrir contenido. En escritorio no se renderiza (las flechas y
+          el contador ya viven sobre la imagen). */}
+      <div className="mt-3 flex items-center justify-between gap-3 sm:hidden">
+        <CarouselArrow direction="prev" ariaLabel="Categoría anterior" onClick={prev} />
+        <ShowcaseCounter active={active} total={total} variant="plain" />
+        <CarouselArrow direction="next" ariaLabel="Categoría siguiente" onClick={next} />
       </div>
 
       {/* Selector de categoría — pills con indicador activo animado */}
@@ -344,6 +370,9 @@ function ShowcaseSelector() {
           return (
             <button
               key={c.title}
+              ref={(el) => {
+                pillRefs.current[i] = el;
+              }}
               type="button"
               role="tab"
               aria-selected={isActive}
@@ -390,6 +419,34 @@ function ShowcaseSelector() {
         ))}
       </div>
     </div>
+  );
+}
+
+/* ──────────── Contador discreto "01 / 05" ──────────── */
+
+function ShowcaseCounter({
+  active,
+  total,
+  variant,
+}: {
+  active: number;
+  total: number;
+  variant: "glass" | "plain";
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold tabular-nums tracking-[0.08em]",
+        variant === "glass"
+          ? "border border-white/25 bg-white/10 text-white backdrop-blur-md"
+          : "border border-[color:var(--color-ink)]/10 bg-white/70 text-[color:var(--color-steel)]",
+      )}
+    >
+      {String(active + 1).padStart(2, "0")}
+      <span className="opacity-60">/</span>
+      {String(total).padStart(2, "0")}
+    </span>
   );
 }
 
